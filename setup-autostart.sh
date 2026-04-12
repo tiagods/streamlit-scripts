@@ -4,6 +4,7 @@ set -e
 APP_DIR="$HOME/streamlit-scripts"
 SERVICE_NAME="streamlit-scripts"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+WRAPPER="/usr/local/bin/${SERVICE_NAME}-start.sh"
 
 # ─── Detecta o docker ────────────────────────────────────────────────────────
 
@@ -16,7 +17,7 @@ echo "Docker encontrado em: $DOCKER_BIN"
 
 # ─── Instala o compose plugin se não existir ─────────────────────────────────
 
-if ! docker compose version &> /dev/null; then
+if ! "$DOCKER_BIN" compose version &> /dev/null; then
     echo "Docker Compose plugin não encontrado. Instalando..."
     if command -v dnf &> /dev/null; then
         sudo dnf install -y docker-compose-plugin
@@ -29,8 +30,25 @@ if ! docker compose version &> /dev/null; then
     fi
 fi
 
-echo "Docker Compose: $(docker compose version)"
+# Verifica se o compose funciona como root
+if ! sudo "$DOCKER_BIN" compose version &> /dev/null; then
+    echo "Erro: 'sudo docker compose' não funciona. Verifique a instalação do plugin."
+    sudo "$DOCKER_BIN" compose version
+    exit 1
+fi
+
+echo "Docker Compose: $(sudo $DOCKER_BIN compose version)"
 echo "Configurando autostart para: $APP_DIR"
+
+# ─── Cria o script wrapper ───────────────────────────────────────────────────
+
+sudo tee "$WRAPPER" > /dev/null <<EOF
+#!/bin/bash
+cd ${APP_DIR}
+${DOCKER_BIN} compose \$@
+EOF
+
+sudo chmod +x "$WRAPPER"
 
 # ─── Cria o serviço systemd ───────────────────────────────────────────────────
 
@@ -44,9 +62,8 @@ Requires=docker.service
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=${APP_DIR}
-Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ExecStart=${DOCKER_BIN} compose up -d --build
-ExecStop=${DOCKER_BIN} compose down
+ExecStart=/bin/bash -c '${DOCKER_BIN} compose up -d --build'
+ExecStop=/bin/bash -c '${DOCKER_BIN} compose down'
 TimeoutStartSec=300
 
 [Install]
