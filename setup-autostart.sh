@@ -5,6 +5,14 @@ APP_DIR="$HOME/streamlit-scripts"
 SERVICE_NAME="streamlit-scripts"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
+# Detecta o caminho real do docker
+DOCKER_BIN="$(which docker)"
+if [ -z "$DOCKER_BIN" ]; then
+    echo "Erro: docker não encontrado no PATH."
+    exit 1
+fi
+
+echo "Docker encontrado em: $DOCKER_BIN"
 echo "Configurando autostart para: $APP_DIR"
 
 # ─── Cria o serviço systemd ───────────────────────────────────────────────────
@@ -19,8 +27,9 @@ Requires=docker.service
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=${APP_DIR}
-ExecStart=/usr/bin/docker compose up -d --build
-ExecStop=/usr/bin/docker compose down
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=${DOCKER_BIN} compose up -d --build
+ExecStop=${DOCKER_BIN} compose down
 TimeoutStartSec=300
 
 [Install]
