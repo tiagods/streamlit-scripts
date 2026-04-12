@@ -4,44 +4,66 @@ set -e
 REPO_URL="git@github.com:tiagods/streamlit-scripts.git"
 APP_DIR="streamlit-scripts"
 
+# ─── Detecta o gerenciador de pacotes ────────────────────────────────────────
+
+if command -v dnf &> /dev/null; then
+    PKG="sudo dnf install -y"
+    PKG_UPDATE="sudo dnf update -y"
+elif command -v apt-get &> /dev/null; then
+    PKG="sudo apt-get install -y"
+    PKG_UPDATE="sudo apt-get update -qq"
+else
+    echo "Gerenciador de pacotes não suportado (esperado dnf ou apt-get)."
+    exit 1
+fi
+
 # ─── Funções de instalação ────────────────────────────────────────────────────
 
 install_git() {
     echo "Instalando git..."
-    sudo apt-get update -qq
-    sudo apt-get install -y git
+    $PKG_UPDATE
+    $PKG git
 }
 
 install_docker() {
     echo "Instalando Docker..."
-    sudo apt-get update -qq
-    sudo apt-get install -y ca-certificates curl gnupg lsb-release
+    if command -v dnf &> /dev/null; then
+        sudo dnf install -y docker
+        sudo systemctl enable docker
+        sudo systemctl start docker
+    else
+        $PKG_UPDATE
+        $PKG ca-certificates curl gnupg lsb-release
 
-    sudo install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-        | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+        sudo install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+            | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-    echo \
-        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-        https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
-        | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        echo \
+            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+            https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+            | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-    sudo apt-get update -qq
-    sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+        $PKG_UPDATE
+        $PKG docker-ce docker-ce-cli containerd.io
 
-    sudo systemctl enable docker
-    sudo systemctl start docker
+        sudo systemctl enable docker
+        sudo systemctl start docker
+    fi
 
-    # Adiciona o usuário atual ao grupo docker para não precisar de sudo
     sudo usermod -aG docker "$USER"
     echo "Docker instalado. Pode ser necessário fazer logout/login para usar sem sudo."
 }
 
 install_docker_compose() {
     echo "Instalando Docker Compose plugin..."
-    sudo apt-get update -qq
-    sudo apt-get install -y docker-compose-plugin
+    if command -v dnf &> /dev/null; then
+        sudo dnf install -y docker-compose-plugin
+    else
+        $PKG_UPDATE
+        $PKG docker-compose-plugin
+    fi
 }
 
 # ─── Verificações e instalações ───────────────────────────────────────────────
