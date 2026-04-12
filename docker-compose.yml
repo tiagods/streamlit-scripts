@@ -6,11 +6,16 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: nginx:alpine
+    image: jonasal/nginx-certbot:latest
+    environment:
+      - CERTBOT_EMAIL=seu_email@sua_empresa.com.br
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Esse container lê config desta pasta especial e pega o certificado automático
+      - ./nginx/nginx.conf:/etc/nginx/user_conf.d/default.conf:ro
+      - ./letsencrypt:/etc/letsencrypt
     depends_on:
       - ferramentas
     restart: unless-stopped
