@@ -1,15 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Type checkers / linters
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Streamlit
+.streamlit/cache/
+.streamlit/secrets.toml
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Arquivos de dados (inputs/outputs locais)
 *.xlsx
 *.xls
 *.csv
-*.json
-*.txt
-*.log
-*.tmp
-*.temp
+*.pdf
 *.docx
 *.doc
-*.pdf
 *.pptx
 *.ppt
 *.pps
 *.ppsx
+*.log
+*.tmp
+*.temp
+input/
+output/
+tmp/
