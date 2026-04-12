@@ -1,6 +1,9 @@
 streamlit
 pandas
-datetime
 xlrd
 openpyxl
 xlsxwriter
+pdfplumber
+fpdf2
+rarfile
+patool
