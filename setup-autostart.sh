@@ -1,14 +1,10 @@
 #!/bin/bash
 set -e
 
-APP_DIR="$HOME/streamlit-scripts"
 SERVICE_NAME="streamlit-scripts"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
-COMPOSE_BIN="$(which docker-compose)"
 
-echo "Configurando autostart para: $APP_DIR"
-
-sudo tee "$SERVICE_FILE" > /dev/null <<EOF
+sudo tee "$SERVICE_FILE" > /dev/null <<'EOF'
 [Unit]
 Description=Streamlit Scripts - Docker Compose
 After=docker.service network-online.target
@@ -17,9 +13,9 @@ Requires=docker.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=${APP_DIR}
-ExecStart=${COMPOSE_BIN} up -d --build
-ExecStop=${COMPOSE_BIN} down
+WorkingDirectory=/home/ec2-user/streamlit-scripts
+ExecStart=/usr/local/bin/docker-compose up -d
+ExecStop=/usr/local/bin/docker-compose down
 TimeoutStartSec=300
 
 [Install]
