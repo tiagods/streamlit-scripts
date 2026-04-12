@@ -4,51 +4,20 @@ set -e
 APP_DIR="$HOME/streamlit-scripts"
 SERVICE_NAME="streamlit-scripts"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
-WRAPPER="/usr/local/bin/${SERVICE_NAME}-start.sh"
 
-# ─── Detecta o docker ────────────────────────────────────────────────────────
+# ─── Detecta o docker-compose ────────────────────────────────────────────────
 
-DOCKER_BIN="$(which docker)"
-if [ -z "$DOCKER_BIN" ]; then
-    echo "Erro: docker não encontrado no PATH."
-    exit 1
-fi
-echo "Docker encontrado em: $DOCKER_BIN"
-
-# ─── Instala o compose plugin se não existir ─────────────────────────────────
-
-if ! "$DOCKER_BIN" compose version &> /dev/null; then
-    echo "Docker Compose plugin não encontrado. Instalando..."
-    if command -v dnf &> /dev/null; then
-        sudo dnf install -y docker-compose-plugin
-    elif command -v apt-get &> /dev/null; then
-        sudo apt-get update -qq
-        sudo apt-get install -y docker-compose-plugin
-    else
-        echo "Erro: gerenciador de pacotes não suportado."
-        exit 1
-    fi
-fi
-
-# Verifica se o compose funciona como root
-if ! sudo "$DOCKER_BIN" compose version &> /dev/null; then
-    echo "Erro: 'sudo docker compose' não funciona. Verifique a instalação do plugin."
-    sudo "$DOCKER_BIN" compose version
+if command -v docker-compose &> /dev/null; then
+    COMPOSE_BIN="$(which docker-compose)"
+elif docker compose version &> /dev/null 2>&1; then
+    COMPOSE_BIN="docker compose"
+else
+    echo "Erro: nem 'docker-compose' nem 'docker compose' encontrados."
     exit 1
 fi
 
-echo "Docker Compose: $(sudo $DOCKER_BIN compose version)"
+echo "Docker Compose encontrado: $COMPOSE_BIN"
 echo "Configurando autostart para: $APP_DIR"
-
-# ─── Cria o script wrapper ───────────────────────────────────────────────────
-
-sudo tee "$WRAPPER" > /dev/null <<EOF
-#!/bin/bash
-cd ${APP_DIR}
-${DOCKER_BIN} compose \$@
-EOF
-
-sudo chmod +x "$WRAPPER"
 
 # ─── Cria o serviço systemd ───────────────────────────────────────────────────
 
@@ -62,8 +31,9 @@ Requires=docker.service
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=${APP_DIR}
-ExecStart=/bin/bash -c '${DOCKER_BIN} compose up -d --build'
-ExecStop=/bin/bash -c '${DOCKER_BIN} compose down'
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/bin/bash -c '${COMPOSE_BIN} up -d --build'
+ExecStop=/bin/bash -c '${COMPOSE_BIN} down'
 TimeoutStartSec=300
 
 [Install]
