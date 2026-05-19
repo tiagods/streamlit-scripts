@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REPO_URL="git@github.com:tiagods/streamlit-scripts.git"
+REPO_URL="https://github.com/tiagods/streamlit-scripts.git"
 APP_DIR="streamlit-scripts"
 
 # ─── Detecta o gerenciador de pacotes ────────────────────────────────────────
