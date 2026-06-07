@@ -66,7 +66,7 @@ ignorar_maiusculas = st.toggle('Ignorar maiúsculas/minúsculas nos filtros', va
 st.divider()
 
 if uploaded_files:
-    if st.button('Mesclar', type='primary', use_container_width=True, disabled=regex_preenchido and outros_preenchidos):
+    if st.button('Mesclar', type='primary', width='stretch', disabled=regex_preenchido and outros_preenchidos):
         with st.spinner('Mesclando…'):
             try:
                 merger = ZipMerger(
@@ -87,7 +87,7 @@ if uploaded_files:
                     data=dados,
                     file_name=nome_arquivo,
                     mime='application/zip',
-                    use_container_width=True,
+                    width='stretch',
                     type='primary',
                 )
 

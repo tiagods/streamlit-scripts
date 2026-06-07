@@ -7,11 +7,11 @@ Plataforma de utilitários internos para colaboradores, construída com Streamli
 ## Estrutura do projeto
 
 ```
-Home.py                        # Entrada: define st.navigation() e carrega CSS global
 pages/                         # Uma página por ferramenta
-    01_Extrato_PDF_para_Excel.py
-    02_Extrato_Arquivo_Escrituracao.py
-    03_Zip_Merger.py
+    home.py                    # Entrada: define st.navigation() e carrega CSS global
+    extrato_pdf_excel.py
+    escrituracao.py
+    zip_merger.py
 scripts/                       # Lógica de negócio reutilizável (ver scripts/CLAUDE.md)
     extrato-itau-pdf-to-excel.py
     extrato-santander-pdf-to-excel.py
@@ -64,8 +64,8 @@ Não adicionar dependências sem atualizar `requirements.txt` e verificar que o 
 ## Adicionando uma nova ferramenta
 
 1. **Script** (se houver lógica reutilizável): criar em `scripts/` e documentar em `scripts/CLAUDE.md`.
-2. **Página**: criar `pages/NN_Nome_Da_Ferramenta.py` com `sys.path.insert` + `load_css()` no topo.
-3. **Navegação**: registrar em dois lugares em `Home.py`:
+2. **Página**: criar `pages/nome_da_ferramenta.py` com `sys.path.insert` + `load_css()` no topo.
+3. **Navegação**: registrar em dois lugares em `pages/home.py`:
    - Lista `tools` dentro de `home()` (card na página inicial).
    - `st.navigation()` (item no menu lateral).
 
@@ -105,7 +105,7 @@ docker compose up --build -d
 
 # Sem Docker
 pip install -r requirements.txt
-streamlit run pages/Home.py
+streamlit run pages/home.py
 ```
 
 PDFs de teste ficam em `docs/`. Saídas temporárias em `tmp/` (não versionado).

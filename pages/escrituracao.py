@@ -130,7 +130,7 @@ if st.button("Processar", disabled=bt_disabled):
     try:
         df_conciliado, erros_conc = conciliar_extrato(extrato, df_servicos_filtrado)
 
-        st.dataframe(df_conciliado, use_container_width=True, hide_index=True)
+        st.dataframe(df_conciliado, width='stretch', hide_index=True)
 
         output = BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
@@ -149,7 +149,7 @@ if st.button("Processar", disabled=bt_disabled):
         todos_erros = (erros_ext if uploaded_extrato else []) + erros_conc
         if todos_erros:
             df_error = pd.DataFrame(todos_erros, columns=["Erro"])
-            st.dataframe(df_error, use_container_width=True, hide_index=True)
+            st.dataframe(df_error, width='stretch', hide_index=True)
 
             output_error = BytesIO()
             with pd.ExcelWriter(output_error, engine="xlsxwriter") as writer:

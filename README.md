@@ -105,7 +105,7 @@ Acesse: [http://localhost:8501](http://localhost:8501)
 
 ```bash
 pip install -r requirements.txt
-streamlit run Home.py
+streamlit run pages/home.py
 ```
 
 ---
@@ -164,9 +164,7 @@ Em `Home.py`, adicione a página em dois lugares:
 **No `st.navigation()`:**
 ```python
 'Ferramentas': [
-    st.Page('pages/01_Extrato_Itau_para_Excel.py', title='Extrato Itaú para Excel', icon='🏦'),
-    st.Page('pages/02_Hello_World.py', title='Hello World', icon='👋'),
-    st.Page('pages/03_Minha_Ferramenta.py', title='Minha Ferramenta', icon='🔧'),  # ← novo
+    st.Page('pages/01_Hello_World.py', title='Hello World', icon='👋'),
 ],
 ```
 

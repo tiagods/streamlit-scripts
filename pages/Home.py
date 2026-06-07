@@ -64,12 +64,12 @@ def home():
 
 pg = st.navigation({
     'Home': [
-        st.Page(home, title='Home', icon='🏠', default=True),
+        st.Page(home, title='Home', icon='🏠', default=True, url_path='home'),
     ],
     'Ferramentas': [
-        st.Page('01_Extrato_PDF_para_Excel.py', title='Extrato PDF para Excel', icon='🏦'),
-        st.Page('02_Extrato_Arquivo_Escrituracao.py', title='Extrato XLS para Escrituração Contábil', icon='👋'),
-        st.Page('03_Zip_Merger.py', title='Zip Merger', icon='🗜'),
+        st.Page('extrato_pdf_excel.py', title='Extrato PDF para Excel', icon='🏦', url_path='extrato-pdf-excel'),
+        st.Page('escrituracao.py', title='Extrato XLS para Escrituração Contábil', icon='👋', url_path='escrituracao'),
+        st.Page('zip_merger.py', title='Zip Merger', icon='🗜', url_path='zip-merger'),
     ],
 })
 

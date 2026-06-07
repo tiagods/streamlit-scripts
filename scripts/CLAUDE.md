@@ -10,12 +10,12 @@ Scripts de automação reutilizáveis carregados pelas páginas Streamlit via `i
 
 | Arquivo | Função exportada | Página que consome |
 |---------|-----------------|-------------------|
-| `extrato-itau-pdf-to-excel.py` | `extrair_extrato_itau(caminho_pdf)` | `01_Extrato_PDF_para_Excel.py` |
-| `extrato-santander-pdf-to-excel.py` | `extrair_extrato_santander(caminho_pdf)` | `01_Extrato_PDF_para_Excel.py` |
-| `extrato-bradesco-pdf-to-excel.py` | `extrair_extrato_bradesco(caminho_pdf)` | `01_Extrato_PDF_para_Excel.py` |
-| `extrato-c6-pdf-to-excel.py` | `extrair_extrato_c6(caminho_pdf)` | `01_Extrato_PDF_para_Excel.py` |
-| `extrato_escrituracao.py` | `carregar_arquivo`, `encontrar_linha_colunas`, `gerar_extrato`, `conciliar_extrato` | `02_Extrato_Arquivo_Escrituracao.py` |
-| `zip_merger_content.py` | `ZipMerger` | `03_Zip_Merger.py` |
+| `extrato-itau-pdf-to-excel.py` | `extrair_extrato_itau(caminho_pdf)` | `extrato_pdf_excel.py` |
+| `extrato-santander-pdf-to-excel.py` | `extrair_extrato_santander(caminho_pdf)` | `extrato_pdf_excel.py` |
+| `extrato-bradesco-pdf-to-excel.py` | `extrair_extrato_bradesco(caminho_pdf)` | `extrato_pdf_excel.py` |
+| `extrato-c6-pdf-to-excel.py` | `extrair_extrato_c6(caminho_pdf)` | `extrato_pdf_excel.py` |
+| `extrato_escrituracao.py` | `carregar_arquivo`, `encontrar_linha_colunas`, `gerar_extrato`, `conciliar_extrato` | `escrituracao.py` |
+| `zip_merger_content.py` | `ZipMerger` | `zip_merger.py` |
 
 ---
 
@@ -94,5 +94,5 @@ Decisões não óbvias documentadas em `extrato-santander-pdf-to-excel.md`:
    - `detectar_limites()` com a lógica de `x0` do cabeçalho seguinte
    - Função principal `extrair_extrato_<banco>(caminho_pdf) → DataFrame`
    - Bloco `if __name__ == '__main__':` para uso em linha de comando
-2. Registrar a função em `pages/01_Extrato_PDF_para_Excel.py` via `_carregar()` e adicionar uma aba `st.tabs`.
+2. Registrar a função em `pages/extrato_pdf_excel.py` via `_carregar()` e adicionar uma aba `st.tabs`.
 3. Criar `extrato-<banco>-pdf-to-excel.md` documentando o layout e qualquer decisão não óbvia.

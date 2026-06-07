@@ -53,13 +53,13 @@ def _render_extrator(label, extractor):
     )
     st.divider()
     if uploaded:
-        if st.button('Converter', type='primary', use_container_width=True, key=f'btn_{label}'):
+        if st.button('Converter', type='primary', width='stretch', key=f'btn_{label}'):
             with st.spinner('Processando…'):
                 try:
                     df = extractor(io.BytesIO(uploaded.read()))
 
                     st.metric('Lançamentos', len(df))
-                    st.dataframe(df, use_container_width=True, hide_index=True)
+                    st.dataframe(df, width='stretch', hide_index=True)
 
                     buffer = io.BytesIO()
                     df.to_excel(buffer, index=False)
@@ -70,7 +70,7 @@ def _render_extrator(label, extractor):
                         data=buffer,
                         file_name=Path(uploaded.name).stem + '.xlsx',
                         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        use_container_width=True,
+                        width='stretch',
                         type='primary',
                         key=f'dl_{label}',
                     )
