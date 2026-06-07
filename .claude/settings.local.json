@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(pip show *)",
+      "Bash(pip list)",
+      "Bash(cd *)",
+      "Bash(ls -la *)",
+      "Bash(cat *)",
+      "Bash(head -n 20 *)",
+      "Bash(tail -n 20 *)",
+      "Bash(cat > *)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}

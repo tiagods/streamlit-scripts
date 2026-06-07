@@ -35,7 +35,7 @@ A plataforma é construída com [Streamlit](https://streamlit.io/) e containeriz
 ```
 ferramentas/
 │
-├── Home.py                         # Ponto de entrada — define navegação e carrega CSS global
+├── Home.py                         # Ponto de entrada - define navegação e carrega CSS global
 │
 ├── pages/                          # Páginas da plataforma (uma por ferramenta)
 │   ├── 01_Extrato_Itau_para_Excel.py
@@ -76,7 +76,7 @@ Converte extratos bancários do Itaú em formato PDF para planilha Excel.
 
 #### Por que `pdfplumber` em vez de `camelot`?
 
-O extrato do Itaú não é uma tabela com bordas ou linhas de grade — é um PDF com **texto posicionado por coordenadas X/Y**. O `camelot` foi projetado para PDFs com estrutura tabular explícita e falha nesse tipo de documento.
+O extrato do Itaú não é uma tabela com bordas ou linhas de grade - é um PDF com **texto posicionado por coordenadas X/Y**. O `camelot` foi projetado para PDFs com estrutura tabular explícita e falha nesse tipo de documento.
 
 O `pdfplumber` lê as coordenadas exatas de cada palavra no PDF (`x0`, `x1`, `top`) e permite **reconstruir as colunas manualmente pelos limites de posição X**. Para o layout específico do extrato Itaú, essa abordagem é muito mais precisa e confiável do que tentar inferir estrutura onde ela não existe.
 
@@ -181,4 +181,4 @@ O tema é configurado em dois lugares:
 | `.streamlit/config.toml` | Paleta de cores base (Spotify Dark: fundo `#191414`, verde `#1DB954`) |
 | `styles/global.css` | Classes CSS customizadas (cards, hero, badges, footer) |
 
-O CSS global é carregado automaticamente em todas as páginas via `utils/styles.py`. Para customizar o visual, edite `styles/global.css` — as mudanças se aplicam a toda a plataforma.
+O CSS global é carregado automaticamente em todas as páginas via `utils/styles.py`. Para customizar o visual, edite `styles/global.css` - as mudanças se aplicam a toda a plataforma.
