@@ -9,9 +9,25 @@ Suporta dois layouts:
 """
 
 import re
+import sys
 import unicodedata
+from pathlib import Path
+
 import pdfplumber
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils.pdf_errors import PDFSemTextoError
+
+
+def _verificar_pdf_texto(caminho_pdf):
+    """Lança PDFSemTextoError se o PDF não contiver texto extraível."""
+    with pdfplumber.open(caminho_pdf) as pdf:
+        tem_texto = all(pagina.extract_words() for pagina in pdf.pages)
+    if hasattr(caminho_pdf, 'seek'):
+        caminho_pdf.seek(0)
+    if not tem_texto:
+        raise PDFSemTextoError()
 
 
 # ---------------------------------------------------------------------------
@@ -101,32 +117,35 @@ def detectar_layout(pdf):
         for y in sorted(grupos.keys()):
             linha = sorted(grupos[y], key=lambda w: w['x0'])
 
-            cols_cx = {}
+            # Armazena (x0, centro) de cada palavra de cabeçalho reconhecida
+            cols = {}
             for p in linha:
                 chave = _norm(p['text'])
-                if chave in _HEADER_MAP and _HEADER_MAP[chave] not in cols_cx:
-                    cols_cx[_HEADER_MAP[chave]] = (p['x0'] + p['x1']) / 2
+                if chave in _HEADER_MAP and _HEADER_MAP[chave] not in cols:
+                    cols[_HEADER_MAP[chave]] = (p['x0'], (p['x0'] + p['x1']) / 2)
 
-            if 'data' not in cols_cx or 'saldo' not in cols_cx:
+            if 'data' not in cols or 'saldo' not in cols:
                 continue
 
-            if 'entradas' in cols_cx and 'saidas' in cols_cx:
+            if 'entradas' in cols and 'saidas' in cols:
                 layout = 'B'
                 ordem = ['data', 'descricao', 'entradas', 'saidas', 'saldo']
-            elif 'valor' in cols_cx or 'lancamento' in cols_cx:
+            elif 'valor' in cols or 'lancamento' in cols:
                 layout = 'A'
                 ordem = ['data', 'lancamento', 'valor', 'saldo']
             else:
                 continue
 
-            cols_ord = [(n, cols_cx[n]) for n in ordem if n in cols_cx]
-            cols_ord.sort(key=lambda t: t[1])
+            # Ordena pelo centro; usa x0 de cada coluna como início e x0 da próxima como fim.
+            # Assim o campo de uma coluna nunca ultrapassa a posição inicial da seguinte.
+            cols_ord = [(n, cols[n][0], cols[n][1]) for n in ordem if n in cols]
+            cols_ord.sort(key=lambda t: t[2])
 
             page_w = pagina.width + 50
             limites = {}
-            for i, (nome, cx) in enumerate(cols_ord):
-                x_start = 0 if i == 0 else (cols_ord[i - 1][1] + cx) / 2
-                x_end   = page_w if i == len(cols_ord) - 1 else (cx + cols_ord[i + 1][1]) / 2
+            for i, (nome, x0, cx) in enumerate(cols_ord):
+                x_start = 0 if i == 0 else cols_ord[i][1]
+                x_end   = page_w if i == len(cols_ord) - 1 else cols_ord[i + 1][1]
                 limites[nome] = (x_start, x_end)
 
             return layout, limites
@@ -135,7 +154,7 @@ def detectar_layout(pdf):
 
 
 # ---------------------------------------------------------------------------
-# Extração — Layout A (Personalite)
+# Extração - Layout A (Personalite)
 # ---------------------------------------------------------------------------
 
 def extrair_layout_a(pdf, limites):
@@ -168,18 +187,19 @@ def extrair_layout_a(pdf, limites):
 
 
 # ---------------------------------------------------------------------------
-# Extração — Layout B (Conta corrente mensal)
+# Extração - Layout B (Conta corrente mensal)
 # ---------------------------------------------------------------------------
 
 def extrair_layout_b(pdf, limites):
     """Extrai lançamentos do Layout B (Conta corrente, data dd/mm).
 
     Cada linha com valor válido é um lançamento independente.
-    Linhas sem data herdam data_atual. Texto de rodapé na coluna saldo é
-    descartado via REGEX_VALOR_BR.
+    Linhas sem data herdam data_atual entre páginas. Para ao encontrar
+    'Saldo final' ou 'Saldo em C/C', que marcam o início do resumo final.
     """
     dados = []
     ano_corrente = None
+    data_atual   = None  # persiste entre páginas
 
     for pagina in pdf.pages:
         palavras = pagina.extract_words()
@@ -192,10 +212,16 @@ def extrair_layout_b(pdf, limites):
             ano_corrente = m_ano.group(1)
 
         grupos = agrupar_linhas(palavras, tolerancia=3)
-        data_atual = None
+        fim = False
 
         for y in sorted(grupos.keys()):
             cols = linha_para_colunas(grupos[y], limites)
+
+            linha_norm = _norm(' '.join(cols.values()))
+            if 'saldo final' in linha_norm or 'saldo em c' in linha_norm:
+                fim = True
+                break
+
             data_col  = cols.get('data', '')
             descricao = cols.get('descricao', '')
             entradas  = cols.get('entradas', '')
@@ -208,24 +234,27 @@ def extrair_layout_b(pdf, limites):
             if not data_atual:
                 continue
 
-            # Determina valor; linhas sem valor válido são informativas → ignora
-            if saidas and REGEX_VALOR_BR.match(saidas):
-                valor = '-' + saidas.rstrip('-')
-            elif entradas and REGEX_VALOR_BR.match(entradas):
-                valor = entradas.rstrip('+')
-            else:
+            tem_entrada = bool(entradas and REGEX_VALOR_BR.match(entradas))
+            tem_saida   = bool(saidas   and REGEX_VALOR_BR.match(saidas))
+            if not tem_entrada and not tem_saida:
                 continue
 
             # Descarta texto de rodapé que cai na coluna saldo
             saldo = saldo_raw if saldo_raw and REGEX_VALOR_BR.match(saldo_raw) else ''
 
-            dados.append({'Data': data_atual, 'Lançamento': descricao, 'Valor': valor, 'Saldo': saldo})
+            cred = float(entradas.rstrip('+').replace('.', '').replace(',', '.')) if tem_entrada else None
+            deb  = -float(saidas.rstrip('-').replace('.', '').replace(',', '.'))  if tem_saida  else None
+
+            dados.append({'Data': data_atual, 'Lançamento': descricao, 'Crédito': cred, 'Débito': deb, 'Saldo': saldo})
+
+        if fim:
+            break
 
     return dados
 
 
 # ---------------------------------------------------------------------------
-# Validação — contagem independente de lançamentos no PDF
+# Validação - contagem independente de lançamentos no PDF
 # ---------------------------------------------------------------------------
 
 def _contar_lancamentos_a(pdf, limites):
@@ -252,6 +281,7 @@ def _contar_lancamentos_b(pdf, limites):
     """Segunda passagem no PDF contando lançamentos do Layout B sem armazenar."""
     total = 0
     ano = None
+    data_atual = None  # persiste entre páginas
     for pagina in pdf.pages:
         palavras = pagina.extract_words()
         if not palavras:
@@ -261,9 +291,13 @@ def _contar_lancamentos_b(pdf, limites):
         if m:
             ano = m.group(1)
         grupos = agrupar_linhas(palavras, tolerancia=3)
-        data_atual = None
+        fim = False
         for y in sorted(grupos.keys()):
             cols = linha_para_colunas(grupos[y], limites)
+            linha_norm = _norm(' '.join(cols.values()))
+            if 'saldo final' in linha_norm or 'saldo em c' in linha_norm:
+                fim = True
+                break
             dc  = cols.get('data', '')
             ent = cols.get('entradas', '')
             sai = cols.get('saidas', '')
@@ -274,6 +308,8 @@ def _contar_lancamentos_b(pdf, limites):
             if not (sai and REGEX_VALOR_BR.match(sai)) and not (ent and REGEX_VALOR_BR.match(ent)):
                 continue
             total += 1
+        if fim:
+            break
     return total
 
 
@@ -311,6 +347,8 @@ def extrair_extrato_itau(caminho_pdf):
     Retorna um DataFrame com colunas: Data, Lançamento, Valor, Saldo.
     Lança ValueError se a contagem não conferir.
     """
+    _verificar_pdf_texto(caminho_pdf)
+
     with pdfplumber.open(caminho_pdf) as pdf:
         layout, limites = detectar_layout(pdf)
         print(f"[INFO] Layout detectado: {layout!r} ({'Personalite' if layout == 'A' else 'Conta corrente'})")
@@ -320,7 +358,11 @@ def extrair_extrato_itau(caminho_pdf):
         else:
             dados = extrair_layout_b(pdf, limites)
 
-        df = pd.DataFrame(dados, columns=['Data', 'Lançamento', 'Valor', 'Saldo'])
+        if layout == 'A':
+            cols = ['Data', 'Lançamento', 'Valor', 'Saldo']
+        else:
+            cols = ['Data', 'Lançamento', 'Crédito', 'Débito', 'Saldo']
+        df = pd.DataFrame(dados, columns=cols)
         _validar_contagem(pdf, layout, limites, df)
 
     return df

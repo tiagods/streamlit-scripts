@@ -7,7 +7,7 @@ st.set_page_config(
     layout='centered',
 )
 
-# CSS global — carregado em todas as páginas
+# CSS global - carregado em todas as páginas
 _css = (Path(__file__).parent.parent / 'styles' / 'global.css').read_text(encoding='utf-8')
 st.markdown(f'<style>{_css}</style>', unsafe_allow_html=True)
 
@@ -26,8 +26,8 @@ def home():
     tools = [
         {
             'icon': '🏦',
-            'name': 'Extrato Itaú para Excel',
-            'description': 'Faça upload do extrato bancário em PDF e baixe uma planilha Excel pronta, com todos os lançamentos organizados por data. Ideal para conciliação financeira.',
+            'name': 'Extrato PDF para Excel',
+            'description': 'Converta extratos bancários em PDF (Itaú, Santander, Bradesco, C6 Bank) para planilhas Excel organizadas, prontas para análise e conciliação financeira.',
             'tag': 'Financeiro',
         },
         {
@@ -67,7 +67,7 @@ pg = st.navigation({
         st.Page(home, title='Home', icon='🏠', default=True),
     ],
     'Ferramentas': [
-        st.Page('01_Extrato_Itau_para_Excel.py', title='Extrato Itaú para Excel', icon='🏦'),
+        st.Page('01_Extrato_PDF_para_Excel.py', title='Extrato PDF para Excel', icon='🏦'),
         st.Page('02_Extrato_Arquivo_Escrituracao.py', title='Extrato XLS para Escrituração Contábil', icon='👋'),
         st.Page('03_Zip_Merger.py', title='Zip Merger', icon='🗜'),
     ],
