@@ -11,6 +11,8 @@ st.set_page_config(
 _css = (Path(__file__).parent.parent / 'styles' / 'global.css').read_text(encoding='utf-8')
 st.markdown(f'<style>{_css}</style>', unsafe_allow_html=True)
 
+# Página Home - Apresentação geral das ferramentas
+
 def home():
     st.markdown("""
     <div class="hero">
