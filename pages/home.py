@@ -31,18 +31,21 @@ def home():
             'name': 'Extrato PDF para Excel',
             'description': 'Converta extratos bancários em PDF (Itaú, Santander, Bradesco, C6 Bank) para planilhas Excel organizadas, prontas para análise e conciliação financeira.',
             'tag': 'Financeiro',
+            'url': '/extrato-pdf-excel',
         },
         {
             'icon': '👋',
             'name': 'Extrato XLS para Escrituração Contábil',
             'description': 'Processamento de arquivos de planilha Excel contendo informações financeiras para escrituração contábil.',
             'tag': 'Contabilidade',
+            'url': '/escrituracao',
         },
         {
             'icon': '🗜',
-            'name': 'Zip Merger',
+            'name': 'Unificador de ZIPs',
             'description': 'Una o conteúdo de múltiplos arquivos ZIP e RAR em um único ZIP. Filtre os arquivos internos por nome, prefixo, sufixo, substring ou expressão regular.',
             'tag': 'Geral',
+            'url': '/zip-merger',
         },
     ]
 
@@ -50,12 +53,14 @@ def home():
     for i, tool in enumerate(tools):
         with cols[i]:
             st.markdown(f"""
-            <div class="tool-card">
-                <div class="tool-icon">{tool['icon']}</div>
-                <div class="tool-name">{tool['name']}</div>
-                <div class="tool-desc">{tool['description']}</div>
-                <div class="tool-tag">{tool['tag']}</div>
-            </div>
+            <a href="{tool['url']}" target="_self" class="tool-card-link">
+                <div class="tool-card">
+                    <div class="tool-icon">{tool['icon']}</div>
+                    <div class="tool-name">{tool['name']}</div>
+                    <div class="tool-desc">{tool['description']}</div>
+                    <div class="tool-tag">{tool['tag']}</div>
+                </div>
+            </a>
             """, unsafe_allow_html=True)
 
     st.markdown("""
@@ -71,7 +76,7 @@ pg = st.navigation({
     'Ferramentas': [
         st.Page('extrato_pdf_excel.py', title='Extrato PDF para Excel', icon='🏦', url_path='extrato-pdf-excel'),
         st.Page('escrituracao.py', title='Extrato XLS para Escrituração Contábil', icon='👋', url_path='escrituracao'),
-        st.Page('zip_merger.py', title='Zip Merger', icon='🗜', url_path='zip-merger'),
+        st.Page('zip_merger.py', title='Unificador de ZIPs', icon='🗜', url_path='zip-merger'),
     ],
 })
 

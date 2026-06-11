@@ -7,7 +7,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.styles import load_css
-from utils.pdf_errors import PDFSemTextoError, MENSAGEM_PDF_SEM_TEXTO
+from utils.pdf_errors import PDFSemTextoError, MENSAGEM_PDF_SEM_TEXTO, pdf_requer_senha
 load_css()
 
 
@@ -24,6 +24,7 @@ def _carregar(nome_script, nome_funcao):
 extrair_itau      = _carregar('extrato-itau-pdf-to-excel',      'extrair_extrato_itau')
 extrair_santander = _carregar('extrato-santander-pdf-to-excel', 'extrair_extrato_santander')
 extrair_bradesco  = _carregar('extrato-bradesco-pdf-to-excel',  'extrair_extrato_bradesco')
+extrair_c6        = _carregar('extrato-c6-pdf-to-excel',        'extrair_extrato_c6')
 
 # -------------------------------------------------------------------------
 # Layout
@@ -38,10 +39,11 @@ st.markdown("""
 
 st.divider()
 
-tab_itau, tab_santander, tab_bradesco = st.tabs([
+tab_itau, tab_santander, tab_bradesco, tab_c6 = st.tabs([
     '🏦 Itaú',
     '🏦 Santander',
     '🏦 Bradesco',
+    '🏦 C6',
 ])
 
 
@@ -51,35 +53,58 @@ def _render_extrator(label, extractor):
         type='pdf',
         key=f'upload_{label}',
     )
-    st.divider()
-    if uploaded:
-        if st.button('Converter', type='primary', width='stretch', key=f'btn_{label}'):
-            with st.spinner('Processando…'):
-                try:
-                    df = extractor(io.BytesIO(uploaded.read()))
 
-                    st.metric('Lançamentos', len(df))
-                    st.dataframe(df, width='stretch', hide_index=True)
-
-                    buffer = io.BytesIO()
-                    df.to_excel(buffer, index=False)
-                    buffer.seek(0)
-
-                    st.download_button(
-                        label='⬇  Baixar Excel',
-                        data=buffer,
-                        file_name=Path(uploaded.name).stem + '.xlsx',
-                        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        width='stretch',
-                        type='primary',
-                        key=f'dl_{label}',
-                    )
-                except PDFSemTextoError:
-                    st.warning(MENSAGEM_PDF_SEM_TEXTO)
-                except Exception as exc:
-                    st.error(f'Erro ao processar o arquivo: {exc}')
-    else:
+    if not uploaded:
         st.info('Faça o upload de um PDF para começar.')
+        return
+
+    pdf_bytes = uploaded.read()
+    protegido = pdf_requer_senha(pdf_bytes)
+
+    senha        = None
+    pode_converter = True
+
+    if protegido:
+        senha = st.text_input(
+            'Senha do PDF',
+            type='password',
+            key=f'senha_{label}',
+        )
+
+        if not senha:
+            st.warning('Este PDF está protegido por senha. Informe a senha para continuar.')
+            pode_converter = False
+
+    st.divider()
+
+    if not pode_converter:
+        return
+
+    if st.button('Converter', type='primary', width='stretch', key=f'btn_{label}'):
+        with st.spinner('Processando…'):
+            try:
+                df = extractor(io.BytesIO(pdf_bytes), senha=senha)
+
+                st.metric('Lançamentos', len(df))
+                st.dataframe(df, width='stretch', hide_index=True)
+
+                buffer = io.BytesIO()
+                df.to_excel(buffer, index=False)
+                buffer.seek(0)
+
+                st.download_button(
+                    label='⬇  Baixar Excel',
+                    data=buffer,
+                    file_name=Path(uploaded.name).stem + '.xlsx',
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    width='stretch',
+                    type='primary',
+                    key=f'dl_{label}',
+                )
+            except PDFSemTextoError:
+                st.warning(MENSAGEM_PDF_SEM_TEXTO)
+            except Exception as exc:
+                st.error(f'Erro ao processar o arquivo: {exc}')
 
 
 with tab_itau:
@@ -90,3 +115,6 @@ with tab_santander:
 
 with tab_bradesco:
     _render_extrator('Bradesco', extrair_bradesco)
+
+with tab_c6:
+    _render_extrator('C6', extrair_c6)

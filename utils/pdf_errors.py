@@ -1,3 +1,17 @@
+import io
+import pdfplumber
+
+
+def pdf_requer_senha(pdf_bytes):
+    """Retorna True se o PDF está protegido por senha."""
+    try:
+        with pdfplumber.open(io.BytesIO(pdf_bytes)):
+            pass
+        return False
+    except Exception:
+        return True
+
+
 class PDFSemTextoError(ValueError):
     """Levantada quando um PDF não contém texto extraível (PDF de imagem)."""
     pass

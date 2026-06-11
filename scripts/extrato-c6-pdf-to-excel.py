@@ -3,7 +3,7 @@ Extrator de extrato C6 Bank (PDF) para Excel.
 
 Layout: Extrato mensal C6 Bank PJ
 Colunas: Data lançamento | Data contábil | Tipo | Descrição | Valor
-Data no formato dd/mm; valores prefixados com R$ ou -R$.
+Datas no formato dd/mm; valores têm R$ como token separado do número.
 """
 
 import re
@@ -19,7 +19,8 @@ from utils.pdf_errors import PDFSemTextoError
 
 REGEX_DATA    = re.compile(r'^\d{2}/\d{2}$')
 REGEX_VALOR   = re.compile(r'^-?R\$\s*\d{1,3}(?:\.\d{3})*,\d{2}$')
-_RE_ANO       = re.compile(r'\b(20\d{2})\b')
+_RE_DATA_FULL = re.compile(r'\d{2}/\d{2}/(\d{4})')   # captura ano de cabeçalhos de mês
+_RE_SUFIXO_RS = re.compile(r'\s*(-?R\$)\s*$')         # R$ que caiu na coluna de descrição
 
 _FALLBACK = {
     'data_lanc': (0,    70),
@@ -34,9 +35,9 @@ def _norm(texto):
     return unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode().lower()
 
 
-def _verificar_pdf_texto(caminho_pdf):
+def _verificar_pdf_texto(caminho_pdf, senha=None):
     """Lança PDFSemTextoError se o PDF não contiver texto extraível."""
-    with pdfplumber.open(caminho_pdf) as pdf:
+    with pdfplumber.open(caminho_pdf, password=senha or '') as pdf:
         tem_texto = all(pagina.extract_words() for pagina in pdf.pages)
     if hasattr(caminho_pdf, 'seek'):
         caminho_pdf.seek(0)
@@ -75,7 +76,7 @@ def detectar_limites(pdf):
         grupos   = agrupar_linhas(palavras, tolerancia=5)
 
         pos = {}
-        data_items = []  # lista de (x0, cx) para cada ocorrência da palavra "data"
+        data_items = []
 
         for y in sorted(grupos.keys()):
             for p in sorted(grupos[y], key=lambda w: w['x0']):
@@ -121,6 +122,48 @@ def detectar_limites(pdf):
     return _FALLBACK
 
 
+def _contar_lancamentos_c6(pdf, limites):
+    """Segunda passagem independente: conta lançamentos sem armazenar dados."""
+    total = 0
+    for pagina in pdf.pages:
+        palavras = pagina.extract_words()
+        if not palavras:
+            continue
+        grupos = agrupar_linhas(palavras, tolerancia=3)
+        for y in sorted(grupos.keys()):
+            linha_bruta = ' '.join(
+                p['text'] for p in sorted(grupos[y], key=lambda w: w['x0'])
+            )
+            if _RE_DATA_FULL.search(linha_bruta):
+                continue
+            cols      = linha_para_colunas(grupos[y], limites)
+            data_lanc = cols.get('data_lanc', '').strip()
+            desc_col  = cols.get('descricao', '').strip()
+            valor_col = cols.get('valor', '').strip()
+            m_rs = _RE_SUFIXO_RS.search(desc_col)
+            if m_rs and valor_col and re.match(r'^\d', valor_col):
+                valor_col = m_rs.group(1) + ' ' + valor_col
+            linha_norm = _norm(linha_bruta)
+            if 'saldo' in linha_norm and 'dia' in linha_norm:
+                continue
+            if REGEX_DATA.match(data_lanc) and valor_col and REGEX_VALOR.match(valor_col):
+                total += 1
+    return total
+
+
+def _validar_contagem(pdf, limites, df):
+    """Compara total extraído com contagem independente no PDF. Lança ValueError se divergir."""
+    esperado = _contar_lancamentos_c6(pdf, limites)
+    extraido = len(df)
+    if extraido != esperado:
+        raise ValueError(
+            f"[ERRO] Validacao falhou: PDF contem {esperado} lancamentos, "
+            f"mas foram extraidos {extraido} (diferenca: {extraido - esperado:+d}). "
+            f"Verifique o arquivo gerado."
+        )
+    print(f"[OK] Validacao: {extraido} lancamentos extraidos == {esperado} no PDF")
+
+
 def _parse_valor(v):
     v = v.strip()
     neg = v.startswith('-')
@@ -131,27 +174,20 @@ def _parse_valor(v):
         return None
 
 
-def extrair_extrato_c6(caminho_pdf):
+def extrair_extrato_c6(caminho_pdf, senha=None):
     """Extrai lançamentos do extrato C6 Bank.
 
-    Retorna DataFrame com colunas: Data, Tipo, Descrição, Valor.
+    Retorna DataFrame com colunas: Data, Data Contábil, Tipo, Descrição, Valor.
     """
-    _verificar_pdf_texto(caminho_pdf)
+    _verificar_pdf_texto(caminho_pdf, senha=senha)
 
-    with pdfplumber.open(caminho_pdf) as pdf:
+    with pdfplumber.open(caminho_pdf, password=senha or '') as pdf:
         limites = detectar_limites(pdf)
 
-        # Extrai o menor ano do cabeçalho (período, não data de exportação)
-        ano = None
-        for pagina in pdf.pages[:2]:
-            palavras = pagina.extract_words() or []
-            texto    = ' '.join(p['text'] for p in palavras[:120])
-            anos     = _RE_ANO.findall(texto)
-            if anos:
-                ano = min(anos, key=int)
-                break
-
         dados = []
+        ano_atual           = None
+        desc_pendente       = ''   # descrição de linha anterior à linha de data+valor
+        aguarda_continuacao = False  # True após linha de valor sem descrição inline
 
         for pagina in pdf.pages:
             palavras = pagina.extract_words()
@@ -160,35 +196,78 @@ def extrair_extrato_c6(caminho_pdf):
             grupos = agrupar_linhas(palavras, tolerancia=3)
 
             for y in sorted(grupos.keys()):
-                cols       = linha_para_colunas(grupos[y], limites)
-                data_lanc  = cols.get('data_lanc', '').strip()
-                tipo_col   = cols.get('tipo', '').strip()
-                desc_col   = cols.get('descricao', '').strip()
-                valor_col  = cols.get('valor', '').strip()
+                linha_bruta = ' '.join(
+                    p['text'] for p in sorted(grupos[y], key=lambda w: w['x0'])
+                )
 
-                # Pula linhas de saldo diário e cabeçalho
-                linha_txt = ' '.join(cols.values()).lower()
-                if 'saldo' in linha_txt and 'dia' in linha_txt:
+                # Cabeçalhos de mês contêm data completa dd/mm/yyyy: atualiza ano e pula a linha
+                m_ano = _RE_DATA_FULL.search(linha_bruta)
+                if m_ano:
+                    ano_atual           = m_ano.group(1)
+                    desc_pendente       = ''
+                    aguarda_continuacao = False
+                    continue
+
+                cols      = linha_para_colunas(grupos[y], limites)
+                data_lanc = cols.get('data_lanc', '').strip()
+                data_cont = cols.get('data_cont', '').strip()
+                tipo_col  = cols.get('tipo', '').strip()
+                desc_col  = cols.get('descricao', '').strip()
+                valor_col = cols.get('valor', '').strip()
+
+                # R$ pode cair na coluna de descrição quando o valor é grande e o token
+                # fica à esquerda do limite da coluna valor. Resgata para valor_col.
+                m_rs = _RE_SUFIXO_RS.search(desc_col)
+                if m_rs and valor_col and re.match(r'^\d', valor_col):
+                    valor_col = m_rs.group(1) + ' ' + valor_col
+                    desc_col  = desc_col[:m_rs.start()].strip()
+
+                # Pula linhas de saldo diário e de cabeçalho de coluna
+                linha_norm = _norm(linha_bruta)
+                if 'saldo' in linha_norm and 'dia' in linha_norm:
+                    aguarda_continuacao = False
                     continue
                 if _norm(tipo_col) == 'tipo':
                     continue
 
-                if not REGEX_DATA.match(data_lanc):
-                    continue
-                if not valor_col or not REGEX_VALOR.match(valor_col):
-                    continue
+                tem_data  = bool(REGEX_DATA.match(data_lanc))
+                tem_valor = bool(valor_col and REGEX_VALOR.match(valor_col))
 
-                data = f"{data_lanc}/{ano}" if ano else data_lanc
-                valor = _parse_valor(valor_col)
+                if tem_data and tem_valor:
+                    data = f"{data_lanc}/{ano_atual}" if ano_atual else data_lanc
+                    dc   = f"{data_cont}/{ano_atual}" if (data_cont and ano_atual) else data_cont
+                    desc = (desc_pendente + ' ' + desc_col).strip()
+                    dados.append({
+                        'Data':          data,
+                        'Data Contábil': dc,
+                        'Tipo':          tipo_col,
+                        'Descrição':     desc,
+                        'Valor':         _parse_valor(valor_col),
+                    })
+                    desc_pendente       = ''
+                    # Aguarda continuação se a linha de valor não trouxe descrição inline
+                    aguarda_continuacao = (desc_col == '')
 
-                dados.append({
-                    'Data': data,
-                    'Tipo': tipo_col,
-                    'Descrição': desc_col,
-                    'Valor': valor,
-                })
+                elif tem_data and not tem_valor:
+                    # Linha de data sem valor: guarda como pré-descrição do próximo lançamento
+                    desc_pendente       = desc_col
+                    aguarda_continuacao = False
 
-    return pd.DataFrame(dados, columns=['Data', 'Tipo', 'Descrição', 'Valor'])
+                elif not tem_data and desc_col and data_lanc == '':
+                    if aguarda_continuacao and dados:
+                        dados[-1]['Descrição'] = (
+                            dados[-1]['Descrição'] + ' ' + desc_col
+                        ).strip()
+                        aguarda_continuacao = False
+                    elif not aguarda_continuacao:
+                        sep = ' ' if desc_pendente else ''
+                        desc_pendente += sep + desc_col
+
+        colunas = ['Data', 'Data Contábil', 'Tipo', 'Descrição', 'Valor']
+        df = pd.DataFrame(dados, columns=colunas)
+        _validar_contagem(pdf, limites, df)
+
+    return df
 
 
 if __name__ == '__main__':
@@ -200,12 +279,13 @@ if __name__ == '__main__':
     )
     parser.add_argument('arquivo', nargs='?', default='extrato-c6.pdf')
     parser.add_argument('saida',   nargs='?', default='extrato_c6.xlsx')
+    parser.add_argument('--senha', default=None, help='Senha do PDF (se protegido)')
     args = parser.parse_args()
 
     try:
-        df = extrair_extrato_c6(args.arquivo)
+        df = extrair_extrato_c6(args.arquivo, senha=args.senha)
         df.to_excel(args.saida, index=False)
-        print(f"Sucesso! {len(df)} lançamentos → {args.saida}")
+        print(f"Sucesso! {len(df)} lancamentos -> {args.saida}")
         print()
         print(df.to_string(index=False))
     except Exception as e:

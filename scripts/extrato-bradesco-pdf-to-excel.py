@@ -50,9 +50,9 @@ def _norm(texto):
     return unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode().lower()
 
 
-def _verificar_pdf_texto(caminho_pdf):
+def _verificar_pdf_texto(caminho_pdf, senha=None):
     """Lança PDFSemTextoError se o PDF não contiver texto extraível."""
-    with pdfplumber.open(caminho_pdf) as pdf:
+    with pdfplumber.open(caminho_pdf, password=senha or '') as pdf:
         tem_texto = all(pagina.extract_words() for pagina in pdf.pages)
     if hasattr(caminho_pdf, 'seek'):
         caminho_pdf.seek(0)
@@ -120,14 +120,14 @@ def _to_float(v):
     return -num if neg else num
 
 
-def extrair_extrato_bradesco(caminho_pdf):
+def extrair_extrato_bradesco(caminho_pdf, senha=None):
     """Extrai lançamentos do extrato Bradesco Net Empresa.
 
     Retorna DataFrame com colunas: Data, Lançamento, Dcto., Crédito, Débito, Saldo.
     """
-    _verificar_pdf_texto(caminho_pdf)
+    _verificar_pdf_texto(caminho_pdf, senha=senha)
 
-    with pdfplumber.open(caminho_pdf) as pdf:
+    with pdfplumber.open(caminho_pdf, password=senha or '') as pdf:
         limites = detectar_limites(pdf)
 
         dados = []

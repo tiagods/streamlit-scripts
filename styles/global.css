@@ -68,6 +68,18 @@
     margin-top: 0.8rem;
 }
 
+/* ── Tool card link ──────────────────────────────────── */
+a.tool-card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    height: 100%;
+}
+a.tool-card-link:hover {
+    text-decoration: none;
+    color: inherit;
+}
+
 /* ── Footer ───────────────────────────────────────────── */
 .footer {
     text-align: center;

@@ -133,9 +133,9 @@ def _extrair_palavras(pagina, tolerancia_y=3):
     return resultado
 
 
-def _verificar_pdf_texto(caminho_pdf):
+def _verificar_pdf_texto(caminho_pdf, senha=None):
     """Lança PDFSemTextoError se o PDF não contiver texto extraível."""
-    with pdfplumber.open(caminho_pdf) as pdf:
+    with pdfplumber.open(caminho_pdf, password=senha or '') as pdf:
         tem_texto = all(pagina.extract_words() for pagina in pdf.pages)
     if hasattr(caminho_pdf, 'seek'):
         caminho_pdf.seek(0)
@@ -243,7 +243,7 @@ def _to_float(v):
     return -num if neg else num
 
 
-def extrair_extrato_santander(caminho_pdf):
+def extrair_extrato_santander(caminho_pdf, senha=None):
     """Extrai lançamentos do extrato Santander PJ.
 
     Retorna DataFrame com colunas: Data, Descrição, Crédito, Débito, Saldo.
@@ -255,9 +255,9 @@ def extrair_extrato_santander(caminho_pdf):
       Passagem 2 — _extrair_palavras(): lê os chars do PDF para reconstruir os
                    textos da coluna Descrição com os espaços visuais corretos.
     """
-    _verificar_pdf_texto(caminho_pdf)
+    _verificar_pdf_texto(caminho_pdf, senha=senha)
 
-    with pdfplumber.open(caminho_pdf) as pdf:
+    with pdfplumber.open(caminho_pdf, password=senha or '') as pdf:
         limites = detectar_limites(pdf)
 
         ano = None

@@ -26,7 +26,7 @@ merge_zip_content = _mod.merge_zip_content
 
 st.markdown("""
     <div class="hero">
-        <h1>🗜 Zip Merger</h1>
+        <h1>🗜 Unificador de ZIPs</h1>
         <p>Mescle o conteúdo de múltiplos arquivos ZIP e RAR em um único arquivo ZIP.</p>
         <p>Filtre os arquivos internos por nome usando expressão regular, prefixo, sufixo ou substring.</p>
     </div>""", unsafe_allow_html=True)

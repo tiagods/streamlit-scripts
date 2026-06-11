@@ -20,9 +20,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.pdf_errors import PDFSemTextoError
 
 
-def _verificar_pdf_texto(caminho_pdf):
+def _verificar_pdf_texto(caminho_pdf, senha=None):
     """Lança PDFSemTextoError se o PDF não contiver texto extraível."""
-    with pdfplumber.open(caminho_pdf) as pdf:
+    with pdfplumber.open(caminho_pdf, password=senha or '') as pdf:
         tem_texto = all(pagina.extract_words() for pagina in pdf.pages)
     if hasattr(caminho_pdf, 'seek'):
         caminho_pdf.seek(0)
@@ -337,7 +337,7 @@ def _validar_contagem(pdf, layout, limites, df):
 # Ponto de entrada principal
 # ---------------------------------------------------------------------------
 
-def extrair_extrato_itau(caminho_pdf):
+def extrair_extrato_itau(caminho_pdf, senha=None):
     """Extrai lançamentos de qualquer extrato Itaú em PDF.
 
     Detecta automaticamente o layout (A = Personalite; B = Conta corrente),
@@ -347,9 +347,9 @@ def extrair_extrato_itau(caminho_pdf):
     Retorna um DataFrame com colunas: Data, Lançamento, Valor, Saldo.
     Lança ValueError se a contagem não conferir.
     """
-    _verificar_pdf_texto(caminho_pdf)
+    _verificar_pdf_texto(caminho_pdf, senha=senha)
 
-    with pdfplumber.open(caminho_pdf) as pdf:
+    with pdfplumber.open(caminho_pdf, password=senha or '') as pdf:
         layout, limites = detectar_layout(pdf)
         print(f"[INFO] Layout detectado: {layout!r} ({'Personalite' if layout == 'A' else 'Conta corrente'})")
 
