@@ -47,6 +47,7 @@ Thumbs.db
 
 # Arquivos de dados (inputs/outputs locais)
 *.xlsx
+*.xlsm
 *.xls
 *.csv
 *.pdf
